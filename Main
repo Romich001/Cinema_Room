@@ -1,0 +1,203 @@
+import java.util.Arrays;
+import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+
+        InterfaceManager interfaceManager = new InterfaceManager();
+        CinemaRoom cinemaRoom = interfaceManager.createRoom();
+        interfaceManager.menuManager(cinemaRoom);
+
+    }
+}
+//manage users inputs and program outputs
+class InterfaceManager {
+
+    Scanner scanner = new Scanner(System.in);
+
+    // returns a CinemaRoom object with specified by user amount of rows and seats
+    public CinemaRoom createRoom() {
+        System.out.println("Enter the number of rows:");
+        int rows = scanner.nextInt();
+        System.out.println("Enter the number of seats in each row:");
+        int seats = scanner.nextInt();
+
+        System.out.println();
+
+        return new CinemaRoom(rows, seats);
+    }
+//display main menu
+    public void menuManager(CinemaRoom cr) {
+
+        for(;;) {
+            System.out.println("1. Show the seats" +
+                                "\n2. Buy a ticket" +
+                                "\n3. Statistics" +
+                                "\n0. Exit");
+
+            int input = scanner.nextInt();
+
+            switch (input) {
+                case 0:
+                    scanner.close();
+                    return;
+                case 1:
+                    showRoom(cr);
+                    break;
+                case 2:
+                    sellTicket(cr);
+                    showRoom(cr);
+                    break;
+                case 3:
+                    showStatistics(cr);
+            }
+        }
+
+    }
+
+    public void showStatistics(CinemaRoom cr) {
+        System.out.printf("\nNumber of purchased tickets: %d\n" +
+                        "Percentage: %.2f%%\n" +
+                            "Current income: $%d\n" +
+                            "Total income: $%d\n",
+                cr.getPurchasedTickets(), cr.getPurchasedTickets() / (double)cr.getTotalSeats() * 100,
+                cr.getCurrentIncome(), cr.getTotalIncome());
+
+        System.out.println();
+    }
+
+// print cinema room
+    public void showRoom(CinemaRoom cr) {
+
+        SeatStatus [][] planOfRoom = cr.getPlanOfRoom();
+        System.out.println("\nCinema:");
+        System.out.print("  ");
+        for (int i = 1; i <= planOfRoom[0].length; i++) {  //print a line with a seats numbers
+            System.out.print(i + " ");
+        }
+        System.out.println();
+        int rowNumber = 1; // the number of the row
+        for (SeatStatus[] arr : planOfRoom) {
+            System.out.print(rowNumber++ + " "); // print row's number
+            for (SeatStatus seatStatus : arr) {
+                if (seatStatus.equals(SeatStatus.VACANT)) System.out.print("S "); // print seat's status
+                else System.out.print("B ");
+            }
+            System.out.println();
+        }
+        System.out.println();
+    }
+
+    //gets input from user with specified row and seat
+    //if the seat is VACANT then print ticket price, set the seat as OCCUPIED in the plan of room,
+    // increase purchased tickets, sum income
+    public void sellTicket(CinemaRoom cr) {
+
+        System.out.println("\nEnter a row number:");
+        int row = scanner.nextInt();
+        System.out.println("Enter a seat number in that row:");
+        int seat = scanner.nextInt();
+        System.out.println();
+        try {
+            if (cr.getPlanOfRoom()[row - 1][seat - 1] == SeatStatus.VACANT) {
+                System.out.println("Ticket price: $" + cr.getPrice(row));
+                cr.setSoldSeats(row, seat);
+                cr.setPurchasedTickets();
+                cr.sendMoneyInCurrentIncome(row);
+            } else {
+                System.out.println("That ticket has already been purchased!");
+                sellTicket(cr);
+            }
+        } catch (ArrayIndexOutOfBoundsException e){
+            System.out.println("Wrong input!");
+            sellTicket(cr);
+        }
+
+
+    }
+
+
+}
+//present a cinema room
+class CinemaRoom {
+
+    private final int rows; //number of rows in the room
+    private final int seats; // number of seats in the row
+    private final int lessPrice = 8; //price for seats in rooms more 60 seats for back seats
+    private final int biggerPrice = 10; // price for seats in rooms less 60 seats or forward seats in big rooms
+    private final int totalSeats;  //total seats in the room
+    private SeatStatus[][] planOfRoom;
+    private int currentIncome = 0; //sum of sold ticket's price
+    private int purchasedTickets = 0; //amount of sold tickets
+
+    //constructor
+    public CinemaRoom(int rows, int seats){
+        this.rows = rows;
+        this.seats = seats;
+        this.totalSeats = rows * seats;
+        initializeRoom();
+    }
+
+    //fill up the seats in String[][] planOfRoom
+    private void initializeRoom(){
+
+        planOfRoom = new SeatStatus[rows][seats];
+        for (SeatStatus[] seatStatuses : planOfRoom) {
+            Arrays.fill(seatStatuses, SeatStatus.VACANT);
+        }
+    }
+
+    public int getTotalSeats() {
+        return totalSeats;
+    }
+
+    public int getPurchasedTickets() {
+        return purchasedTickets;
+    }
+
+    public void setPurchasedTickets() {
+        purchasedTickets++;
+    }
+
+    public int getCurrentIncome() {
+        return currentIncome;
+    }
+
+    public SeatStatus[][] getPlanOfRoom() {
+        return planOfRoom;
+    }
+
+    //change seat's status in the plan of room, that means the seat is occupied
+    public void setSoldSeats(int row, int seat){
+        planOfRoom[row - 1][seat - 1] = SeatStatus.OCCUPIED;
+    }
+    //increase the current income of the price of ticket
+    public void sendMoneyInCurrentIncome(int row) {
+        currentIncome += getPrice(row);
+    }
+    //income if all seats in the room are sold
+    public int getTotalIncome(){
+        int income; //income with full room
+        if(totalSeats >= 60) {
+            int incomeOfForwardSeats = (rows / 2) * seats * biggerPrice;
+            int incomeOfBackSeats = (rows - (rows / 2)) * seats * lessPrice;
+            income = incomeOfBackSeats + incomeOfForwardSeats;
+
+        } else {
+            income = totalSeats * biggerPrice;
+        }
+        return income;
+    }
+
+   //return price for seat depends on the row and the total seats in the room.
+    //if number of seats more or equal 60 and the seat on the backward of room return lessPrise else biggerPrice
+    public int getPrice(int row){
+
+        return (totalSeats >= 60 && rows / 2 < row) ? lessPrice : biggerPrice;
+
+    }
+}
+//status of a seat in a room
+enum SeatStatus{
+    VACANT, OCCUPIED
+}
